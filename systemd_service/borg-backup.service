@@ -1,0 +1,16 @@
+[Unit]
+Description=Automated Borg Backup Service
+# 確保網路已連線 (若備份涉及遠端雖然此例是本地，但保留好習慣)
+After=network.target
+
+[Service]
+Type=oneshot
+# 指向你的腳本位置
+ExecStart=/srv/sh/tasks/borg-backup.sh
+User=root
+# 備份通常不需要太高優先級，可以降低 IO 優先級避免拖慢系統
+IOSchedulingClass=idle
+CPUSchedulingPolicy=idle
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,24 @@
+[Unit]
+Description=Run SDC File Notice Script
+# 確保在網路之後啟動 (如果您的腳本需要發送通知)
+After=network.target
+
+[Service]
+# oneshot 適合執行一次就結束的腳本
+Type=oneshot
+
+# 執行腳本的路徑
+ExecStart=/bin/bash /srv/sh/tasks/sdc_file_notice.sh
+
+# 關鍵設定：限制最大執行時間為 60 秒
+# 如果腳本卡住或執行超時，Systemd 會強制殺死它
+RuntimeMaxSec=60s
+
+# 如果超時，標記為失敗
+TimeoutStartSec=60s
+
+# 確保殺死主進程
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target

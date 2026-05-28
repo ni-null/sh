@@ -1,0 +1,190 @@
+# =========================================================
+# Task Scripts Config
+# =========================================================
+#
+# 所有 shell scripts 透過 load_config.sh + yq 讀取此檔案
+#
+# 使用原則：
+# - 路徑、port、container name 優先於此設定
+# - YAML 縮排固定使用 2 spaces
+# - 修改 key 名稱前請確認 scripts 是否同步更新
+#
+# =========================================================
+
+
+# ---------------------------------------------------------
+# Teams 通知設定
+#
+# api_conf:
+#   Teams API 設定檔位置
+#
+# default_title:
+#   未指定通知標題時使用
+#
+# default_target:
+#   Teams 卡片預設目標名稱
+#
+# test_mode:
+#   true 時標題前加入「測試訊息」
+# ---------------------------------------------------------
+teams:
+  api_conf: /usr/local/bin/teamapi.conf
+  default_title: 系統通知
+  default_target: General
+  test_mode: true
+
+
+# ---------------------------------------------------------
+# Podman 容器狀態巡檢
+# script: report_pod_status.sh
+#
+# log_file:
+#   巡檢 log 輸出位置
+#
+# default_title:
+#   異常通知預設標題
+#
+# teams_api_script:
+#   Teams 通知腳本絕對路徑
+# ---------------------------------------------------------
+pod_status:
+  log_file: /var/log/podman_monitor.log
+  default_title: 容器異常警告
+  teams_api_script: /mnt/c/tasks/teams_api.sh
+
+
+# ---------------------------------------------------------
+# Borg Backup 設定
+#
+# repo:
+#   Borg repository 路徑
+#
+# keep_daily / keep_weekly / keep_monthly:
+#   備份保留策略
+#
+# backup_targets:
+#   備份目標清單
+#
+# exclude_paths:
+#   自動備份排除路徑
+#
+# manual_exclude_paths:
+#   手動備份排除路徑
+#
+# archive naming:
+#   auto-api_app-2026-05-14
+# ---------------------------------------------------------
+borg:
+  repo: /mnt/hdd/backup
+
+  keep_daily: 14
+  keep_weekly: 0
+  keep_monthly: 12
+
+  backup_targets:
+    - name: srv
+      path: /srv
+
+    - name: api_app
+      path: /home/star/c2nl7010/app
+
+    - name: etc
+      path: /etc
+
+    - name: var_log
+      path: /var/log
+
+    - name: root
+      path: /root
+
+  exclude_paths:
+    - /var/log/journal
+    - /var/log/apport.log*
+    - /var/log/sysstat
+    - /var/log/*.gz
+
+  manual_exclude_paths:
+    - /srv/backup
+    - /var/log/journal
+
+
+# ---------------------------------------------------------
+# MariaDB SQL dump 備份
+# script: mariadb-sql-backup.sh
+#
+# backup_dir:
+#   .sql.gz 備份輸出目錄
+#
+# retention_days:
+#   備份保留天數
+#
+# containers:
+#   需備份的 MariaDB container name
+# ---------------------------------------------------------
+mariadb_sql:
+  backup_dir: /srv/backup-db/sql
+  retention_days: 7
+
+  containers:
+    - api-mariadb
+
+
+# ---------------------------------------------------------
+# MariaDB mydumper 備份
+# script: mariadb_mydumper_backup.sh
+#
+# image:
+#   mydumper container image
+#
+# backup_base:
+#   備份輸出根目錄
+#
+# retention_days:
+#   備份保留天數
+#
+# databases:
+#   多 DB instance 設定
+#
+# env_file:
+#   需包含 MARIADB_ROOT_PASSWORD=...
+# ---------------------------------------------------------
+mydumper:
+  image: docker.io/mydumper/mydumper:v0.21.3-1
+
+  backup_base: /srv/backup-db/mydumper
+
+  retention_days: 7
+
+  databases:
+    - name: api-mariadb
+      port: 23306
+      env_file: /srv/api/.env
+
+
+# ---------------------------------------------------------
+# 系統日誌彙整
+# script: saveTolog.sh
+#
+# log_dir:
+#   彙整後日誌輸出目錄
+#
+# check_days:
+#   audit / journal 回溯檢查天數
+#
+# keep_days_*:
+#   各類日誌保留天數
+#
+# journal_service_prefixes:
+#   自動匹配 {prefix}-*.service
+# ---------------------------------------------------------
+save_to_log:
+  log_dir: /srv/logs
+
+  check_days: 3
+
+  keep_days_audit: 30
+  keep_days_etc: 30
+  keep_days_journal: 7
+
+  journal_service_prefixes:
+    - api

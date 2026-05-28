@@ -1,0 +1,11 @@
+[Unit]
+Description=Run MariaDB SQL Backup Daily
+
+[Timer]
+OnCalendar=*-*-* 23:15:00
+
+# 如果關機錯過了時間，開機後立即補執行
+Persistent=true
+
+[Install]
+WantedBy=timers.target

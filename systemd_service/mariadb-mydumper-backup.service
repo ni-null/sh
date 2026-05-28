@@ -1,0 +1,12 @@
+[Unit]
+Description=MariaDB MyDumper Backup Service (dsce + api)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /srv/sh/tasks/mariadb_mydumper_backup.sh
+TimeoutStartSec=3600
+
+[Install]
+WantedBy=default.target

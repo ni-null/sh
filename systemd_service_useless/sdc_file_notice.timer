@@ -1,0 +1,15 @@
+[Unit]
+Description=Timer for SDC File Notice (Every 20 mins)
+
+[Timer]
+# 設定時間表：每小時的 0分, 20分, 40分 執行 (例如 10:00, 10:20, 10:40...)
+OnCalendar=*:0/20
+
+# 或者，如果您希望是「距離上一次執行結束後」間隔 20 分鐘，請改用：
+# OnUnitActiveSec=20m
+
+# 如果系統關機錯過了執行時間，開機後是否補跑？(True=補跑)
+Persistent=false
+
+[Install]
+WantedBy=timers.target

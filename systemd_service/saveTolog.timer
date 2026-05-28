@@ -1,0 +1,10 @@
+[Unit]
+Description=Timer for merged saveTolog job
+
+[Timer]
+OnCalendar=*-*-* *:00:00
+Persistent=true
+Unit=saveTolog.service
+
+[Install]
+WantedBy=timers.target

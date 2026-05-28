@@ -1,0 +1,15 @@
+[Unit]
+Description=Run merged saveTolog job (audit + etc + journal)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/bin/bash /srv/sh/tasks/saveTolog.sh
+TimeoutStartSec=1200
+KillMode=process
+KillSignal=SIGKILL
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

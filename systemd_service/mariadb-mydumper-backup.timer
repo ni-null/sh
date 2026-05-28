@@ -1,0 +1,9 @@
+[Unit]
+Description=Run MariaDB MyDumper Backup Daily
+
+[Timer]
+OnCalendar=*-*-* 23:45:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

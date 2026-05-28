@@ -1,0 +1,12 @@
+[Unit]
+Description=Run Borg Backup Daily at 2 AM
+
+[Timer]
+# 每日凌晨 02:00:00 執行
+OnCalendar=*-*-* 02:00:00
+# 如果錯過時間（例如關機），開機後是否補跑？True 為是
+Persistent=true
+Unit=borg-backup.service
+
+[Install]
+WantedBy=timers.target

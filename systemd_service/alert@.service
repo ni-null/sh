@@ -1,0 +1,11 @@
+[Unit]
+Description=Universal Teams Alert Service for %i
+After=network.target
+
+[Service]
+Type=oneshot
+# %i 會自動接收來自 OnFailure 傳入的服務名稱 (例如 sdc-redis)
+ExecStart=/srv/sh/send_teams_alert.sh %i
+
+[Install]
+WantedBy=default.target

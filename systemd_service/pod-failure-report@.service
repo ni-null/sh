@@ -1,0 +1,11 @@
+[Unit]
+Description=Report Pod Failure for %i
+After=network.target
+
+[Service]
+Type=oneshot
+# 注意：這裡的 %i 代表您傳入的參數 (Pod 名稱)
+ExecStart=/srv/sh/tasks/report_pod_status.sh
+
+[Install]
+WantedBy=multi-user.target
