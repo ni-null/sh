@@ -21,7 +21,16 @@ fi
 TEAM_API_CONF="$(yq eval -r '.teams.api_conf' "$CONFIG_YAML")"
 TEAMS_DEFAULT_TITLE="$(yq eval -r '.teams.default_title' "$CONFIG_YAML")"
 TEAMS_DEFAULT_TARGET="$(yq eval -r '.teams.default_target' "$CONFIG_YAML")"
-IS_TEST_MODE="$(yq eval -r '.teams.test_mode' "$CONFIG_YAML")"
+CONFIG_TEST_MODE="$(yq eval -r '.teams.test_mode' "$CONFIG_YAML")"
+
+if ! command -v jq >/dev/null 2>&1; then
+    echo "錯誤: 找不到 jq，請先安裝 jq"
+    exit 1
+fi
+if ! command -v curl >/dev/null 2>&1; then
+    echo "錯誤: 找不到 curl，請先安裝 curl"
+    exit 1
+fi
 
 : "${TEAM_API_CONF:?缺少設定: teams.api_conf}"
 if [ -f "$TEAM_API_CONF" ]; then
@@ -39,10 +48,11 @@ fi
 # 2. 處理參數
 : "${TEAMS_DEFAULT_TITLE:?缺少設定: teams.default_title}"
 : "${TEAMS_DEFAULT_TARGET:?缺少設定: teams.default_target}"
-: "${IS_TEST_MODE:?缺少設定: teams.test_mode}"
+: "${CONFIG_TEST_MODE:?缺少設定: teams.test_mode}"
+IS_TEST_MODE="${IS_TEST_MODE:-$CONFIG_TEST_MODE}"
 TITLE="${1:-$TEAMS_DEFAULT_TITLE}"
 TARGET="${2:-$TEAMS_DEFAULT_TARGET}"
-CONTENT_INPUT="$3"
+CONTENT_INPUT="${3:-}"
 IS_JSON="${4:-false}"
 HOSTNAME=$(hostname)
 
@@ -108,5 +118,17 @@ PAYLOAD=$(cat <<EOF
 EOF
 )
 
-# 7. 發送
-curl -s -X POST -H "Content-Type: application/json" -d "$PAYLOAD" "$WEBHOOK_URL" > /dev/null
+# 7. 發送（必須確認 HTTP 成功）
+HTTP_CODE=$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H "Content-Type: application/json" -d "$PAYLOAD" "$WEBHOOK_URL") || {
+    echo "錯誤: 發送 Teams 通知失敗 (curl 執行錯誤)"
+    exit 1
+}
+
+case "$HTTP_CODE" in
+    2*)
+        ;;
+    *)
+        echo "錯誤: 發送 Teams 通知失敗 (HTTP $HTTP_CODE)"
+        exit 1
+        ;;
+esac

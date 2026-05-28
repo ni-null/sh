@@ -21,6 +21,14 @@ if ! command -v yq >/dev/null 2>&1; then
     echo "錯誤: 找不到 yq，請先安裝 mikefarah/yq"
     exit 1
 fi
+if ! command -v jq >/dev/null 2>&1; then
+    echo "錯誤: 找不到 jq，請先安裝 jq"
+    exit 1
+fi
+if ! command -v podman >/dev/null 2>&1; then
+    echo "錯誤: 找不到 podman，請先安裝 podman"
+    exit 1
+fi
 
 TEAMS_API_SCRIPT="$(yq eval -r '.pod_status.teams_api_script' "$CONFIG_YAML")"
 IS_TEST_MODE="$(yq eval -r '.teams.test_mode' "$CONFIG_YAML")"
@@ -39,23 +47,22 @@ export IS_TEST_MODE="${IS_TEST_MODE}"
 
 # Log 設定
 LOG_FILE="${POD_STATUS_LOG_FILE}"
-TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
-HOSTNAME=$(hostname)
+mkdir -p "$(dirname "$LOG_FILE")"
 
 # 自訂標題參數
 CUSTOM_TITLE="${1:-$POD_STATUS_DEFAULT_TITLE}"
 
 # --- Log 函式 ---
 log_info() {
-    echo "[$TIMESTAMP] [INFO] $1" | tee -a "$LOG_FILE"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO] $1" | tee -a "$LOG_FILE"
 }
 
 log_warn() {
-    echo "[$TIMESTAMP] [WARN] $1" | tee -a "$LOG_FILE"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [WARN] $1" | tee -a "$LOG_FILE"
 }
 
 log_error() {
-    echo "[$TIMESTAMP] [ERROR] $1" | tee -a "$LOG_FILE"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [ERROR] $1" | tee -a "$LOG_FILE"
 }
 
 # --- 主程式開始 ---
@@ -124,8 +131,6 @@ while IFS= read -r container_file; do
             log_warn "異常: 容器已停止 - $CONTAINER_NAME (狀態: $CONTAINER_STATE)"
             ANOMALY_FOUND=true
             
-            # 取得退出碼
-            EXIT_CODE=$(podman inspect "$CONTAINER_NAME" --format '{{.State.ExitCode}}' 2>/dev/null || echo "N/A")
             ALL_STATUS_DETAILS="${ALL_STATUS_DETAILS}${CONTAINER_NAME}|${CONTAINER_STATE}|${C_STATUS_STR}|abnormal\n"
         else
             log_info "正常: 容器運行中 - $CONTAINER_NAME"
@@ -218,7 +223,7 @@ if [ ! -x "$API_SCRIPT" ]; then
 fi
 
 # 參數：標題, 目標, 內容JSON, is_json標記
-$API_SCRIPT "🚨 ${CUSTOM_TITLE}" "Container Services" "$CONTENT_JSON" "true"
+"$API_SCRIPT" "🚨 ${CUSTOM_TITLE}" "Container Services" "$CONTENT_JSON" "true"
 
 if [ $? -eq 0 ]; then
     log_info "通知發送成功"

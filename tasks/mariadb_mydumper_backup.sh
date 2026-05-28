@@ -89,7 +89,18 @@ for DB in "${DATABASES[@]}"; do
   fi
 
   # 讀取密碼
-  DB_PASS=$(grep -E '^MARIADB_ROOT_PASSWORD=' "$ENV_FILE_DB" | cut -d'=' -f2- | tr -d '[:space:]')
+  DB_PASS_LINE=$(grep -m1 -E '^MARIADB_ROOT_PASSWORD=' "$ENV_FILE_DB" || true)
+  DB_PASS="${DB_PASS_LINE#MARIADB_ROOT_PASSWORD=}"
+  DB_PASS="${DB_PASS%$'\r'}"
+
+  # 支援 .env 中使用單引號或雙引號包覆密碼值
+  if [[ "$DB_PASS" == \"*\" ]]; then
+    DB_PASS="${DB_PASS#\"}"
+    DB_PASS="${DB_PASS%\"}"
+  elif [[ "$DB_PASS" == \'*\' ]]; then
+    DB_PASS="${DB_PASS#\'}"
+    DB_PASS="${DB_PASS%\'}"
+  fi
 
   if [ -z "$DB_PASS" ]; then
     log "❌ 無法讀取密碼（$ENV_FILE_DB）"
@@ -107,12 +118,12 @@ for DB in "${DATABASES[@]}"; do
   # 執行備份
   "$PODMAN_BIN" run --rm \
     --network host \
+    -e "MYSQL_PWD=${DB_PASS}" \
     -v "${OUTPUT_DIR}:/backup" \
     "$MYDUMPER_IMAGE" \
     mydumper \
       --host "$MYDUMPER_HOST" \
       --user "$DB_USER" \
-      --password "$DB_PASS" \
       --port "$PORT" \
       --outputdir /backup \
       --compress \

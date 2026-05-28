@@ -21,7 +21,6 @@ BORG_MANUAL_EXCLUDE_PATHS="$(yq eval -r '.borg.manual_exclude_paths // [] | join
 
 : "${BORG_REPO:?缺少設定: borg.repo}"
 : "${BORG_BACKUP_TARGETS:?缺少設定: borg.backup_targets}"
-: "${BORG_MANUAL_EXCLUDE_PATHS:?缺少設定: borg.manual_exclude_paths}"
 export BORG_REPO="${BORG_REPO}"
 # export BORG_PASSPHRASE='your_secret' # 若有加密請啟用
 
@@ -31,7 +30,9 @@ IFS=',' read -r -a BACKUP_TARGETS <<< "$BORG_BACKUP_TARGETS"
 
 # 排除清單
 EXCLUDE_PATHS=()
-IFS=',' read -r -a EXCLUDE_PATHS <<< "$BORG_MANUAL_EXCLUDE_PATHS"
+if [ -n "${BORG_MANUAL_EXCLUDE_PATHS}" ]; then
+    IFS=',' read -r -a EXCLUDE_PATHS <<< "$BORG_MANUAL_EXCLUDE_PATHS"
+fi
 
 # ==============================================================================
 # 輔助函式
@@ -55,6 +56,7 @@ TIMESTAMP=$(date +%Y-%m-%d-%H:%M)
 # 1. 預先建構排除參數陣列
 BORG_EXCLUDE_ARGS=()
 for path in "${EXCLUDE_PATHS[@]}"; do
+    [ -n "$path" ] || continue
     BORG_EXCLUDE_ARGS+=(--exclude "$path")
 done
 

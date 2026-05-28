@@ -27,7 +27,6 @@ BORG_EXCLUDE_PATHS="$(yq eval -r '.borg.exclude_paths // [] | join(",")' "$CONFI
 : "${BORG_KEEP_WEEKLY:?缺少設定: borg.keep_weekly}"
 : "${BORG_KEEP_MONTHLY:?缺少設定: borg.keep_monthly}"
 : "${BORG_BACKUP_TARGETS:?缺少設定: borg.backup_targets}"
-: "${BORG_EXCLUDE_PATHS:?缺少設定: borg.exclude_paths}"
 export BORG_REPO="${BORG_REPO}"
 # export BORG_PASSPHRASE='your_secret' # 若有加密請啟用
 
@@ -42,7 +41,9 @@ IFS=',' read -r -a BACKUP_TARGETS <<< "$BORG_BACKUP_TARGETS"
 
 # 排除清單 (注意：路徑結尾若無 * 則為完全匹配)
 EXCLUDE_PATHS=()
-IFS=',' read -r -a EXCLUDE_PATHS <<< "$BORG_EXCLUDE_PATHS"
+if [ -n "${BORG_EXCLUDE_PATHS}" ]; then
+    IFS=',' read -r -a EXCLUDE_PATHS <<< "$BORG_EXCLUDE_PATHS"
+fi
 
 # ==============================================================================
 # 輔助函式：日誌與計時
@@ -129,6 +130,7 @@ TODAY=$(date +%Y-%m-%d)
 # 這會將 EXCLUDE_PATHS 轉換為: --exclude /srv/backup --exclude /var/log/journal
 BORG_EXCLUDE_ARGS=()
 for path in "${EXCLUDE_PATHS[@]}"; do
+    [ -n "$path" ] || continue
     BORG_EXCLUDE_ARGS+=(--exclude "$path")
 done
 
