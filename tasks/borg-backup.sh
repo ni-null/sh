@@ -30,18 +30,17 @@ BORG_EXCLUDE_PATHS="$(yq eval -r '.borg.exclude_paths // [] | join(",")' "$CONFI
 : "${BORG_KEEP_MONTHLY:?缺少設定: borg.keep_monthly}"
 : "${BORG_BACKUP_TARGETS:?缺少設定: borg.backup_targets}"
 
-export BORG_REPO="${BORG_REPO}"
-# export BORG_PASSPHRASE='your_secret'
+export BORG_REPO="$BORG_REPO"
 
-KEEP_DAILY="${BORG_KEEP_DAILY}"
-KEEP_WEEKLY="${BORG_KEEP_WEEKLY}"
-KEEP_MONTHLY="${BORG_KEEP_MONTHLY}"
+KEEP_DAILY="$BORG_KEEP_DAILY"
+KEEP_WEEKLY="$BORG_KEEP_WEEKLY"
+KEEP_MONTHLY="$BORG_KEEP_MONTHLY"
 
 BACKUP_TARGETS=()
 IFS=',' read -r -a BACKUP_TARGETS <<< "$BORG_BACKUP_TARGETS"
 
 EXCLUDE_PATHS=()
-if [ -n "${BORG_EXCLUDE_PATHS}" ]; then
+if [ -n "$BORG_EXCLUDE_PATHS" ]; then
     IFS=',' read -r -a EXCLUDE_PATHS <<< "$BORG_EXCLUDE_PATHS"
 fi
 
@@ -69,7 +68,6 @@ validate_borg_repo() {
     return 0
 }
 
-# 找出所有 borg fuse 掛載點
 list_all_borg_mountpoints() {
     if command -v findmnt >/dev/null 2>&1; then
         findmnt -rn -t fuse.borgfs -o TARGET 2>/dev/null
@@ -82,7 +80,6 @@ list_all_borg_mountpoints() {
     done < /proc/self/mounts
 }
 
-# 備份前自動卸載 borg mount
 auto_unmount_borg_mounts() {
     mapfile -t mounts < <(list_all_borg_mountpoints)
 
@@ -92,6 +89,7 @@ auto_unmount_borg_mounts() {
     fi
 
     local mnt
+
     for mnt in "${mounts[@]}"; do
         [ -n "$mnt" ] || continue
 
@@ -101,10 +99,10 @@ auto_unmount_borg_mounts() {
             log_info "Unmounted by borg umount: $mnt"
         elif umount "$mnt" >/dev/null 2>&1; then
             log_info "Unmounted by umount: $mnt"
-        elif command -v fusermount >/dev/null 2>&1 && fusermount -u "$mnt" >/dev/null 2>&1; then
-            log_info "Unmounted by fusermount: $mnt"
         elif command -v fusermount3 >/dev/null 2>&1 && fusermount3 -u "$mnt" >/dev/null 2>&1; then
             log_info "Unmounted by fusermount3: $mnt"
+        elif command -v fusermount >/dev/null 2>&1 && fusermount -u "$mnt" >/dev/null 2>&1; then
+            log_info "Unmounted by fusermount: $mnt"
         else
             log_err "Failed to unmount borg mount: $mnt"
             return 1
@@ -122,6 +120,38 @@ auto_unmount_borg_mounts() {
     return 0
 }
 
+auto_fix_borg_lock() {
+    if borg with-lock "$BORG_REPO" true >/dev/null 2>&1; then
+        log_info "Repository lock is OK."
+        return 0
+    fi
+
+    log_warn "Repository lock detected: $BORG_REPO"
+
+    if pgrep -af borg >/dev/null 2>&1; then
+        log_err "Active borg process exists. Refusing to break lock:"
+        pgrep -af borg
+        return 1
+    fi
+
+    log_warn "No active borg process found. Running borg break-lock..."
+
+    if borg break-lock "$BORG_REPO"; then
+        log_info "borg break-lock completed."
+    else
+        log_err "borg break-lock failed."
+        return 1
+    fi
+
+    if borg with-lock "$BORG_REPO" true >/dev/null 2>&1; then
+        log_info "Repository lock is OK after break-lock."
+        return 0
+    fi
+
+    log_err "Repository is still locked after break-lock."
+    return 1
+}
+
 # ==============================================================================
 # 主程式
 # ==============================================================================
@@ -131,6 +161,7 @@ log_info "Starting Daily Auto-Backup Job..."
 
 validate_borg_repo || exit 1
 auto_unmount_borg_mounts || exit 1
+auto_fix_borg_lock || exit 1
 
 TODAY=$(date +%Y-%m-%d)
 
