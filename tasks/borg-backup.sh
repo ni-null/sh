@@ -81,42 +81,31 @@ list_all_borg_mountpoints() {
 }
 
 auto_unmount_borg_mounts() {
-    mapfile -t mounts < <(list_all_borg_mountpoints)
+    local mounts
+    mounts="$(pgrep -af "borg mount .*${BORG_REPO}" | awk '{print $NF}')"
 
-    if [ "${#mounts[@]}" -eq 0 ]; then
+    if [ -z "$mounts" ]; then
         log_info "No active borg mounts."
         return 0
     fi
 
     local mnt
-
-    for mnt in "${mounts[@]}"; do
-        [ -n "$mnt" ] || continue
-
+    for mnt in $mounts; do
         log_warn "Detected borg mount: $mnt. Unmounting..."
 
-        if borg umount "$mnt" >/dev/null 2>&1; then
-            log_info "Unmounted by borg umount: $mnt"
-        elif umount "$mnt" >/dev/null 2>&1; then
-            log_info "Unmounted by umount: $mnt"
-        elif command -v fusermount3 >/dev/null 2>&1 && fusermount3 -u "$mnt" >/dev/null 2>&1; then
-            log_info "Unmounted by fusermount3: $mnt"
-        elif command -v fusermount >/dev/null 2>&1 && fusermount -u "$mnt" >/dev/null 2>&1; then
-            log_info "Unmounted by fusermount: $mnt"
-        else
-            log_err "Failed to unmount borg mount: $mnt"
+        borg umount "$mnt" >/dev/null 2>&1 \
+        || umount "$mnt" >/dev/null 2>&1 \
+        || fusermount3 -u "$mnt" >/dev/null 2>&1 \
+        || fusermount -u "$mnt" >/dev/null 2>&1 \
+        || {
+            log_err "Failed to unmount: $mnt"
             return 1
-        fi
+        }
+
+        log_info "Unmounted: $mnt"
     done
 
     sleep 1
-
-    if pgrep -af "borg mount" >/dev/null 2>&1; then
-        log_err "borg mount process still exists after unmount:"
-        pgrep -af "borg mount"
-        return 1
-    fi
-
     return 0
 }
 
