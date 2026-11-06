@@ -1,0 +1,6 @@
+[Unit]
+Description=PostgreSQL SQL Backup
+
+[Service]
+Type=oneshot
+ExecStart=/srv/sh/tasks/postgres-sql-backup.sh

@@ -1,0 +1,9 @@
+[Unit]
+Description=Run PostgreSQL SQL Backup Daily
+
+[Timer]
+OnCalendar=*-*-* 02:10:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
